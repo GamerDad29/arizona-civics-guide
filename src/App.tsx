@@ -1,92 +1,111 @@
-import { Nav } from './components/Nav';
-import { FederalSection } from './sections/FederalSection';
-import { StateSection } from './sections/StateSection';
-import { LocalSection } from './sections/LocalSection';
-import { EducationSection } from './sections/EducationSection';
-import { BudgetSection } from './sections/BudgetSection';
-import { BillsSection } from './sections/BillsSection';
-import { VotingRecordsSection } from './sections/VotingRecordsSection';
-import { ElectionsSection } from './sections/ElectionsSection';
-import { IssuesSection } from './sections/IssuesSection';
-import { DistrictFinderSection } from './sections/DistrictFinderSection';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Sidebar } from './components/Sidebar';
+import { OfficialProfile } from './components/OfficialProfile';
+import { LocalView } from './views/LocalView';
+import { StateView } from './views/StateView';
+import { FederalView } from './views/FederalView';
+import { ElectionsView } from './views/ElectionsView';
+import { BudgetView } from './views/BudgetView';
+import { BillsView } from './views/BillsView';
+import { IssuesView } from './views/IssuesView';
+import { useCivicData } from './hooks/useCivicData';
+import type { CivicOfficial } from './types';
+import type { NavView } from './types';
+
+const PAGE_VARIANTS = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.22 } },
+  exit:    { opacity: 0, y: -6, transition: { duration: 0.14 } },
+};
 
 export default function App() {
-  return (
-    <div className="min-h-screen bg-sand">
-      <Nav />
+  const [view, setView] = useState<NavView>('local');
+  const [selectedOfficial, setSelectedOfficial] = useState<CivicOfficial | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const civic = useCivicData();
 
-      {/* Hero header */}
-      <header className="bg-gradient-to-br from-navy-dark via-navy to-navy-light py-12 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 text-copper text-xs font-bold uppercase tracking-widest mb-4">
-            <span className="w-8 h-px bg-copper/50" />
-            Mesa, Arizona
-            <span className="w-8 h-px bg-copper/50" />
-          </div>
-          <h1 className="font-display font-bold text-white text-4xl sm:text-5xl leading-tight mb-3">
-            Arizona Civics Guide
-          </h1>
-          <p className="text-white/60 text-lg max-w-xl mx-auto">
-            Track your representatives · Stay informed · Take action
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <a href="#federal" className="bg-copper/10 hover:bg-copper/20 border border-copper/30 text-copper text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-              Federal
-            </a>
-            <a href="#state" className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-              State
-            </a>
-            <a href="#local" className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-              Mesa
-            </a>
-            <a href="#elections" className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-              2026 Elections
-            </a>
-          </div>
+  function handleSelectOfficial(o: CivicOfficial) {
+    setSelectedOfficial(o);
+    setView('official-profile');
+    setMobileOpen(false);
+  }
+
+  function handleNav(v: NavView) {
+    setView(v);
+    if (v !== 'official-profile') setSelectedOfficial(null);
+    setMobileOpen(false);
+  }
+
+  const mainKey = view === 'official-profile' ? `profile-${selectedOfficial?.id}` : view;
+
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ background: '#080c14' }}>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-20 bg-black/60 lg:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:relative z-30 h-full transition-transform duration-300
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <Sidebar
+          currentView={view}
+          selectedOfficial={selectedOfficial}
+          onNavChange={handleNav}
+          onSelectOfficial={handleSelectOfficial}
+          civic={civic}
+          sidebarOpen={mobileOpen}
+        />
+      </div>
+
+      {/* Main panel */}
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        {/* Mobile header */}
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 lg:hidden"
+          style={{ background: '#0d1220', borderBottom: '1px solid #1f2d45' }}>
+          <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded-md text-text2 hover:text-text1 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <span className="font-display font-bold text-text1 text-sm">Arizona Civics Guide</span>
         </div>
-      </header>
 
-      {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 py-10 space-y-2">
-
-        {/* Section group label */}
-        <SectionGroupLabel label="Federal Representatives" icon="🏛️" />
-        <FederalSection />
-
-        <SectionGroupLabel label="State of Arizona" icon="🌵" />
-        <StateSection />
-
-        <SectionGroupLabel label="City of Mesa" icon="🌞" />
-        <LocalSection />
-
-        <SectionGroupLabel label="Education Governance" icon="📚" />
-        <EducationSection />
-
-        <SectionGroupLabel label="Budget & Transparency" icon="💰" />
-        <BudgetSection />
-        <BillsSection />
-        <VotingRecordsSection />
-
-        <SectionGroupLabel label="Elections & Civic Tools" icon="🗳️" />
-        <ElectionsSection />
-        <IssuesSection />
-        <DistrictFinderSection />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mainKey}
+            variants={PAGE_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {view === 'official-profile' && selectedOfficial ? (
+              <OfficialProfile
+                official={selectedOfficial}
+                onBack={() => handleNav('local')}
+                enrichOfficial={civic.enrichOfficial}
+              />
+            ) : view === 'local' ? (
+              <LocalView civic={civic} onSelectOfficial={handleSelectOfficial} />
+            ) : view === 'state' ? (
+              <StateView civic={civic} onSelectOfficial={handleSelectOfficial} />
+            ) : view === 'federal' ? (
+              <FederalView civic={civic} onSelectOfficial={handleSelectOfficial} />
+            ) : view === 'elections' ? (
+              <ElectionsView />
+            ) : view === 'budget' ? (
+              <BudgetView />
+            ) : view === 'bills' ? (
+              <BillsView />
+            ) : view === 'issues' ? (
+              <IssuesView />
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
       </main>
-
-      <footer className="bg-navy py-8 mt-16 text-center text-white/40 text-xs">
-        <p className="mb-1">Arizona Civics Guide — Mesa, AZ · Not affiliated with any government entity</p>
-        <p>Data sourced from public records. Verify at official government websites.</p>
-      </footer>
-    </div>
-  );
-}
-
-function SectionGroupLabel({ label, icon }: { label: string; icon: string }) {
-  return (
-    <div className="flex items-center gap-3 pt-6 pb-1">
-      <span className="text-lg">{icon}</span>
-      <h2 className="font-display font-bold text-navy text-xl">{label}</h2>
-      <div className="flex-1 h-px bg-gradient-to-r from-copper/30 to-transparent" />
     </div>
   );
 }

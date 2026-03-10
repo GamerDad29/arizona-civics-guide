@@ -164,8 +164,8 @@ async function getCongressMembers(env: Env, url: URL, corsH: Record<string, stri
     return json(data, 200, corsH);
   }
 
-  // Get all AZ members
-  const congressUrl = `https://api.congress.gov/v3/member?stateCode=AZ&api_key=${env.CONGRESS_API_KEY}&limit=50&currentMember=true`;
+  // Get current AZ members (119th Congress, path-based state filter)
+  const congressUrl = `https://api.congress.gov/v3/member/congress/119/AZ?api_key=${env.CONGRESS_API_KEY}&limit=50&currentMember=true`;
   const resp = await fetch(congressUrl);
   if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
   const data = await resp.json();

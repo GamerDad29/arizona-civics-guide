@@ -9,7 +9,6 @@ interface Props {
   onNavChange: (view: NavView) => void;
   onSelectOfficial: (official: CivicOfficial) => void;
   civic: UseCivicDataReturn;
-  sidebarOpen: boolean;
 }
 
 const mainNav = [
@@ -59,7 +58,7 @@ function OfficialMiniRow({ official, isSelected, onClick }: {
   );
 }
 
-export function Sidebar({ currentView, selectedOfficial, onNavChange, onSelectOfficial, civic, sidebarOpen }: Props) {
+export function Sidebar({ currentView, selectedOfficial, onNavChange, onSelectOfficial, civic }: Props) {
   const localReps = civic.officialsByLevel('local').filter(o =>
     o.id === 'freeman' || o.id === 'somers' || o.isUserDistrict
   ).slice(0, 3);
@@ -73,16 +72,7 @@ export function Sidebar({ currentView, selectedOfficial, onNavChange, onSelectOf
   const activeView = currentView === 'official-profile' ? null : currentView;
 
   return (
-    <aside
-      className="sidebar-shell flex-col"
-      style={{
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        position: 'fixed',
-        top: 0, left: 0, bottom: 0,
-        zIndex: 50,
-        transition: 'transform 0.22s ease',
-      }}
-    >
+    <aside className="sidebar-shell flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: '1px solid #1f2d45' }}>
         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"

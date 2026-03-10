@@ -48,16 +48,16 @@ export default function App() {
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:relative z-30 h-full transition-transform duration-300
+        fixed lg:static inset-y-0 left-0 z-30 flex-shrink-0
+        transition-transform duration-300
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      `} style={{ width: 240 }}>
         <Sidebar
           currentView={view}
           selectedOfficial={selectedOfficial}
           onNavChange={handleNav}
           onSelectOfficial={handleSelectOfficial}
           civic={civic}
-          sidebarOpen={mobileOpen}
         />
       </div>
 

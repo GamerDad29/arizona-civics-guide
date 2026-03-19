@@ -8,6 +8,8 @@ interface Env {
   DB: D1Database;
   GOOGLE_CIVIC_API_KEY: string;
   CONGRESS_API_KEY: string;
+  OPENSTATES_API_KEY: string;
+  FEC_API_KEY: string;
   ALLOWED_ORIGIN: string; // e.g. "https://arizona-civics-guide.pages.dev"
 }
 
@@ -172,6 +174,128 @@ async function getCongressMembers(env: Env, url: URL, corsH: Record<string, stri
   return json(data, 200, corsH);
 }
 
+// ── OpenStates API proxy (state legislators, bills, votes) ──
+
+async function getOpenStates(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
+  const apiKey = env.OPENSTATES_API_KEY;
+  if (!apiKey) return json({ error: 'OpenStates API key not configured' }, 503, corsH);
+
+  const endpoint = url.searchParams.get('endpoint') || 'people';
+  const lat = url.searchParams.get('lat');
+  const lng = url.searchParams.get('lng');
+  const jurisdiction = url.searchParams.get('jurisdiction') || 'Arizona';
+  const district = url.searchParams.get('district');
+  const session = url.searchParams.get('session');
+  const q = url.searchParams.get('q');
+  const sponsor = url.searchParams.get('sponsor');
+
+  let osUrl = '';
+
+  switch (endpoint) {
+    case 'people.geo':
+      // Find reps by lat/lng (for geolocation feature)
+      if (!lat || !lng) return json({ error: 'lat and lng required for people.geo' }, 400, corsH);
+      osUrl = `https://v3.openstates.org/people.geo?lat=${lat}&lng=${lng}&include=other_identifiers`;
+      break;
+
+    case 'people':
+      // Search state legislators by jurisdiction and optionally district
+      osUrl = `https://v3.openstates.org/people?jurisdiction=${encodeURIComponent(jurisdiction)}&org_classification=legislature&per_page=50`;
+      if (district) osUrl += `&district=${encodeURIComponent(district)}`;
+      break;
+
+    case 'bills':
+      // Search state bills
+      osUrl = `https://v3.openstates.org/bills?jurisdiction=${encodeURIComponent(jurisdiction)}&per_page=20&sort=updated_desc&include=votes,sponsorships`;
+      if (session) osUrl += `&session=${encodeURIComponent(session)}`;
+      if (q) osUrl += `&q=${encodeURIComponent(q)}`;
+      if (sponsor) osUrl += `&sponsor=${encodeURIComponent(sponsor)}`;
+      break;
+
+    case 'committees':
+      osUrl = `https://v3.openstates.org/committees?jurisdiction=${encodeURIComponent(jurisdiction)}&per_page=100&include=memberships`;
+      break;
+
+    default:
+      return json({ error: `Unknown endpoint: ${endpoint}. Valid: people, people.geo, bills, committees` }, 400, corsH);
+  }
+
+  const resp = await fetch(osUrl, {
+    headers: { 'X-API-KEY': apiKey },
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    return json({ error: 'OpenStates API error', status: resp.status, detail: err }, resp.status, corsH);
+  }
+
+  const data = await resp.json();
+  return json(data, 200, corsH);
+}
+
+// ── FEC API proxy (campaign finance) ─────────────────────
+
+async function getFEC(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
+  const apiKey = env.FEC_API_KEY || 'DEMO_KEY';
+
+  const endpoint = url.searchParams.get('endpoint') || 'candidates';
+  const candidateId = url.searchParams.get('candidate_id');
+  const name = url.searchParams.get('name');
+  const state = url.searchParams.get('state') || 'AZ';
+  const cycle = url.searchParams.get('cycle') || '2024';
+  const office = url.searchParams.get('office'); // H, S, P
+
+  let fecUrl = '';
+
+  switch (endpoint) {
+    case 'candidates':
+      // Search candidates
+      fecUrl = `https://api.open.fec.gov/v1/candidates/search/?api_key=${apiKey}&state=${state}&sort=name&per_page=20`;
+      if (name) fecUrl += `&name=${encodeURIComponent(name)}`;
+      if (office) fecUrl += `&office=${office}`;
+      if (cycle) fecUrl += `&cycle=${cycle}`;
+      break;
+
+    case 'candidate':
+      // Get specific candidate financials
+      if (!candidateId) return json({ error: 'candidate_id required' }, 400, corsH);
+      fecUrl = `https://api.open.fec.gov/v1/candidate/${candidateId}/totals/?api_key=${apiKey}&per_page=5&sort=-cycle`;
+      break;
+
+    case 'contributions':
+      // Get top donors/contributions for a candidate's committee
+      if (!candidateId) return json({ error: 'candidate_id required' }, 400, corsH);
+      fecUrl = `https://api.open.fec.gov/v1/schedules/schedule_a/by_size/by_candidate/?api_key=${apiKey}&candidate_id=${candidateId}&cycle=${cycle}&per_page=10`;
+      break;
+
+    case 'spending':
+      // Get independent expenditures for/against a candidate
+      if (!candidateId) return json({ error: 'candidate_id required' }, 400, corsH);
+      fecUrl = `https://api.open.fec.gov/v1/schedules/schedule_e/by_candidate/?api_key=${apiKey}&candidate_id=${candidateId}&cycle=${cycle}&per_page=20`;
+      break;
+
+    case 'races':
+      // Get all candidates for a specific race (AZ House/Senate)
+      const districtNum = url.searchParams.get('district');
+      fecUrl = `https://api.open.fec.gov/v1/candidates/search/?api_key=${apiKey}&state=${state}&cycle=${cycle}&per_page=50&sort=name&is_active_candidate=true`;
+      if (office) fecUrl += `&office=${office}`;
+      if (districtNum) fecUrl += `&district=${districtNum}`;
+      break;
+
+    default:
+      return json({ error: `Unknown endpoint: ${endpoint}. Valid: candidates, candidate, contributions, spending, races` }, 400, corsH);
+  }
+
+  const resp = await fetch(fecUrl);
+  if (!resp.ok) {
+    const err = await resp.text();
+    return json({ error: 'FEC API error', status: resp.status, detail: err }, resp.status, corsH);
+  }
+
+  const data = await resp.json();
+  return json(data, 200, corsH);
+}
+
 // ── Full-text search ────────────────────────────────────
 
 async function search(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
@@ -236,6 +360,8 @@ export default {
       if (path === '/api/issues')          return await getIssues(env, url, corsH);
       if (path === '/api/civic')           return await getCivicByAddress(env, url, corsH);
       if (path === '/api/congress')        return await getCongressMembers(env, url, corsH);
+      if (path === '/api/openstates')      return await getOpenStates(env, url, corsH);
+      if (path === '/api/fec')             return await getFEC(env, url, corsH);
       if (path === '/api/search')          return await search(env, url, corsH);
       if (path === '/api/health')          return json({ status: 'ok', db: 'arizona-civics' }, 200, corsH);
 
@@ -247,6 +373,8 @@ export default {
         '/api/issues?id=',
         '/api/civic?address=',
         '/api/congress?bioguideId=',
+        '/api/openstates?endpoint=people|people.geo|bills|committees&lat=&lng=&jurisdiction=&district=&q=',
+        '/api/fec?endpoint=candidates|candidate|contributions|spending|races&candidate_id=&name=&state=AZ&cycle=2024&office=H|S',
         '/api/search?q=',
         '/api/health',
       ]}, 404, corsH);

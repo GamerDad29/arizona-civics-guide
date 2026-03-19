@@ -26,8 +26,8 @@ export default function App() {
           <Route path="/about" component={AboutPage} />
           <Route>
             <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-              <h1 className="font-display font-bold text-4xl text-ink mb-4">Page Not Found</h1>
-              <p className="text-ink/60">The page you are looking for does not exist.</p>
+              <h1 className="font-display font-bold text-4xl mb-4" style={{ color: '#F0F4F8' }}>Page Not Found</h1>
+              <p style={{ color: 'rgba(240,244,248,0.5)' }}>The page you are looking for does not exist.</p>
             </div>
           </Route>
         </Switch>

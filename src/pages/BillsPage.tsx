@@ -5,16 +5,16 @@ import { useApi } from '../hooks/useApi';
 import { fetchBills } from '../lib/api';
 
 const TAG_COLORS: Record<string, string> = {
-  housing: '#C4623A', education: '#2E5EA8', healthcare: '#5C7A5E',
-  transportation: '#7B6B9E', environment: '#5A8A90', economy: '#C4623A',
-  'public-safety': '#B83A3A', water: '#5A8A90', immigration: '#7B6B9E',
+  housing: '#B87333', education: '#5B8FD8', healthcare: '#3D7A53',
+  transportation: '#9B8BBE', environment: '#87CEEB', economy: '#D4956B',
+  'public-safety': '#D86B6B', water: '#87CEEB', immigration: '#9B8BBE',
 };
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  active:  { bg: '#C4623A15', color: '#C4623A', label: 'ACTIVE' },
-  passed:  { bg: '#5C7A5E15', color: '#5C7A5E', label: 'PASSED' },
-  failed:  { bg: '#B83A3A15', color: '#B83A3A', label: 'FAILED' },
-  pending: { bg: '#1C1A1810', color: '#1C1A1860', label: 'PENDING' },
+  active:  { bg: 'rgba(184,115,51,0.12)', color: '#B87333', label: 'ACTIVE' },
+  passed:  { bg: 'rgba(45,90,61,0.12)', color: '#3D7A53', label: 'PASSED' },
+  failed:  { bg: 'rgba(184,58,58,0.12)', color: '#D86B6B', label: 'FAILED' },
+  pending: { bg: 'rgba(240,244,248,0.06)', color: 'rgba(240,244,248,0.4)', label: 'PENDING' },
 };
 
 export function BillsPage() {
@@ -24,9 +24,9 @@ export function BillsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <p className="wpa-label mb-2">Legislation</p>
-        <h1 className="font-display font-bold text-ink text-3xl mb-2">Bill Tracker</h1>
-        <p className="text-ink/60 text-sm">Active and recent legislation affecting Mesa and Arizona residents.</p>
+        <p className="az-label mb-2">Legislation</p>
+        <h1 className="font-display font-bold text-3xl mb-2" style={{ color: '#F0F4F8' }}>Bill Tracker</h1>
+        <p className="text-sm" style={{ color: 'rgba(240,244,248,0.5)' }}>Active and recent legislation affecting Mesa and Arizona residents.</p>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -34,39 +34,39 @@ export function BillsPage() {
           <button key={f} onClick={() => setFilter(f)}
             className="btn capitalize"
             style={{
-              background: filter === f ? '#C4623A' : 'transparent',
-              color: filter === f ? '#FAF8F2' : '#1C1A1860',
-              borderColor: filter === f ? '#C4623A' : '#D5D0C2',
+              background: filter === f ? '#B87333' : 'transparent',
+              color: filter === f ? '#F0F4F8' : 'rgba(240,244,248,0.4)',
+              borderColor: filter === f ? '#B87333' : 'rgba(255,255,255,0.15)',
             }}>
             {f}
           </button>
         ))}
       </div>
 
-      {loading && <p className="text-ink/40 text-sm">Loading...</p>}
+      {loading && <p className="text-sm" style={{ color: 'rgba(240,244,248,0.3)' }}>Loading...</p>}
 
       <div className="space-y-3">
         {bills?.map(bill => {
           const s = STATUS_STYLES[bill.status] ?? STATUS_STYLES.pending;
           return (
             <motion.div key={bill.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="wpa-card p-4">
+              className="glass-card p-4">
               <div className="flex items-start gap-3 flex-wrap mb-2">
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded"
-                  style={{ background: '#C4623A15', color: '#C4623A', border: '1px solid #C4623A25' }}>
+                  style={{ background: 'rgba(184,115,51,0.12)', color: '#B87333', border: '1px solid rgba(184,115,51,0.2)' }}>
                   {bill.number}
                 </span>
                 <span className={`zone-badge zone-badge-${bill.level}`}>{bill.level}</span>
-                <span className="wpa-label-zone" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                <span className="az-label-zone" style={{ background: s.bg, color: s.color }}>{s.label}</span>
               </div>
-              <h3 className="font-display font-bold text-ink text-sm mb-1">{bill.title}</h3>
-              <p className="text-xs text-ink/60 leading-relaxed mb-2">{bill.summary}</p>
-              {bill.impact && <p className="text-2xs text-ink/40 mb-2">{bill.impact}</p>}
+              <h3 className="font-display font-bold text-sm mb-1" style={{ color: '#F0F4F8' }}>{bill.title}</h3>
+              <p className="text-xs leading-relaxed mb-2" style={{ color: 'rgba(240,244,248,0.5)' }}>{bill.summary}</p>
+              {bill.impact && <p className="text-2xs mb-2" style={{ color: 'rgba(240,244,248,0.3)' }}>{bill.impact}</p>}
               {bill.tags && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {bill.tags.map(t => (
                     <span key={t} className="text-2xs font-ui font-semibold px-2 py-0.5 rounded capitalize"
-                      style={{ background: (TAG_COLORS[t] ?? '#1C1A18') + '12', color: TAG_COLORS[t] ?? '#1C1A1860' }}>
+                      style={{ background: (TAG_COLORS[t] ?? '#F0F4F8') + '20', color: TAG_COLORS[t] ?? 'rgba(240,244,248,0.5)' }}>
                       {t.replace('-', ' ')}
                     </span>
                   ))}

@@ -20,27 +20,27 @@ export function DistrictsPage() {
     >
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-sage/10">
-          <MapPin size={20} className="text-sage" />
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(45,90,61,0.1)' }}>
+          <MapPin size={20} style={{ color: '#2D5A3D' }} />
         </div>
-        <h1 className="font-display text-2xl font-bold text-ink">Find Your District</h1>
+        <h1 className="font-display text-2xl font-bold" style={{ color: '#F0F4F8' }}>Who Represents You?</h1>
       </div>
-      <p className="font-body text-ink/60 text-sm mb-8 ml-[52px]">
-        Enter your address to discover which local, state, and federal districts you belong to
-        and who represents you at every level.
+      <p className="font-body text-sm mb-8 ml-[52px]" style={{ color: 'rgba(240,244,248,0.5)' }}>
+        Pop in your address and we'll tell you exactly who's making decisions on your behalf,
+        from city hall all the way to Congress.
       </p>
 
       {/* Search Form */}
-      <div className="wpa-card p-6 mb-8">
+      <div className="glass-card p-6 mb-8">
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/30" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(240,244,248,0.3)' }} />
             <input
               type="text"
               value={address}
               onChange={e => { setAddress(e.target.value); setSubmitted(false); }}
               placeholder="Enter your street address, city, state..."
-              className="input-wpa pl-9"
+              className="input-az pl-9"
             />
           </div>
           <button type="submit" className="btn btn-primary flex-shrink-0">
@@ -55,12 +55,12 @@ export function DistrictsPage() {
             transition={{ duration: 0.3 }}
             className="mt-4"
           >
-            <div className="wpa-alert wpa-alert-info">
+            <div className="az-alert az-alert-info">
               <p className="font-body text-sm mb-2">
-                For the most accurate district information, use the official Arizona Legislature lookup tool.
+                We'll open the official Arizona Legislature lookup tool with your address ready to go.
               </p>
               <a
-                href="https://www.azleg.gov/find-my-legislator/"
+                href={`https://www.azleg.gov/find-my-legislator/?addr=${encodeURIComponent(address)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-outline text-xs inline-flex"
@@ -73,25 +73,27 @@ export function DistrictsPage() {
       </div>
 
       {/* District Info Cards */}
-      <h2 className="font-display text-lg font-bold text-ink mb-4">Understanding Your Districts</h2>
+      <h2 className="font-display text-lg font-bold mb-4" style={{ color: '#F0F4F8' }}>Understanding Your Districts</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10" style={{ gridAutoRows: '1fr' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
-          className="wpa-card overflow-hidden"
+          className="h-full"
         >
-          <div className="h-1" style={{ background: '#7B1D3A' }} />
-          <div className="p-5">
-            <div className="w-10 h-10 rounded-lg bg-burgundy/10 flex items-center justify-center mb-3">
-              <Building2 size={20} className="text-burgundy" />
+          <div className="glass-card overflow-hidden h-full flex flex-col">
+            <div className="h-1" style={{ background: '#B87333' }} />
+            <div className="p-5 flex flex-col flex-1">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: 'rgba(184,115,51,0.1)' }}>
+                <Building2 size={20} style={{ color: '#B87333' }} />
+              </div>
+              <h3 className="font-display font-bold text-base mb-2" style={{ color: '#F0F4F8' }}>Local Districts</h3>
+              <p className="font-body text-sm leading-relaxed line-clamp-4 flex-1" style={{ color: 'rgba(240,244,248,0.5)' }}>
+                Your city council district determines who represents your neighborhood on local issues like
+                roads, parks, zoning, and city services. Mesa has six council districts plus a mayor elected citywide.
+              </p>
             </div>
-            <h3 className="font-display font-bold text-ink text-base mb-2">Local Districts</h3>
-            <p className="font-body text-sm text-ink/60 leading-relaxed">
-              Your city council district determines who represents your neighborhood on local issues like
-              roads, parks, zoning, and city services. Mesa has six council districts plus a mayor elected citywide.
-            </p>
           </div>
         </motion.div>
 
@@ -99,18 +101,20 @@ export function DistrictsPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.3 }}
-          className="wpa-card overflow-hidden"
+          className="h-full"
         >
-          <div className="h-1" style={{ background: '#5C7A5E' }} />
-          <div className="p-5">
-            <div className="w-10 h-10 rounded-lg bg-sage/10 flex items-center justify-center mb-3">
-              <Landmark size={20} className="text-sage" />
+          <div className="glass-card overflow-hidden h-full flex flex-col">
+            <div className="h-1" style={{ background: '#2D5A3D' }} />
+            <div className="p-5 flex flex-col flex-1">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: 'rgba(45,90,61,0.1)' }}>
+                <Landmark size={20} style={{ color: '#2D5A3D' }} />
+              </div>
+              <h3 className="font-display font-bold text-base mb-2" style={{ color: '#F0F4F8' }}>State Districts</h3>
+              <p className="font-body text-sm leading-relaxed line-clamp-4 flex-1" style={{ color: 'rgba(240,244,248,0.5)' }}>
+                Arizona has 30 legislative districts, each electing one state senator and two state representatives.
+                These officials write state laws, set the state budget, and shape education and healthcare policy.
+              </p>
             </div>
-            <h3 className="font-display font-bold text-ink text-base mb-2">State Districts</h3>
-            <p className="font-body text-sm text-ink/60 leading-relaxed">
-              Arizona has 30 legislative districts, each electing one state senator and two state representatives.
-              These officials write state laws, set the state budget, and shape education and healthcare policy.
-            </p>
           </div>
         </motion.div>
 
@@ -118,84 +122,86 @@ export function DistrictsPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.3 }}
-          className="wpa-card overflow-hidden"
+          className="h-full"
         >
-          <div className="h-1" style={{ background: '#A8C4C8' }} />
-          <div className="p-5">
-            <div className="w-10 h-10 rounded-lg bg-sky/10 flex items-center justify-center mb-3">
-              <Globe size={20} className="text-sky-dark" />
+          <div className="glass-card overflow-hidden h-full flex flex-col">
+            <div className="h-1" style={{ background: '#87CEEB' }} />
+            <div className="p-5 flex flex-col flex-1">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: 'rgba(135,206,235,0.1)' }}>
+                <Globe size={20} style={{ color: '#87CEEB' }} />
+              </div>
+              <h3 className="font-display font-bold text-base mb-2" style={{ color: '#F0F4F8' }}>Federal Districts</h3>
+              <p className="font-body text-sm leading-relaxed line-clamp-4 flex-1" style={{ color: 'rgba(240,244,248,0.5)' }}>
+                Arizona has 9 Congressional districts, each electing one U.S. Representative. You also have two
+                U.S. Senators who represent the entire state. They work on federal laws, taxes, and national defense.
+              </p>
             </div>
-            <h3 className="font-display font-bold text-ink text-base mb-2">Federal Districts</h3>
-            <p className="font-body text-sm text-ink/60 leading-relaxed">
-              Arizona has 9 Congressional districts, each electing one U.S. Representative. You also have two
-              U.S. Senators who represent the entire state. They work on federal laws, taxes, and national defense.
-            </p>
           </div>
         </motion.div>
       </div>
 
       {/* External Tools */}
-      <div className="wpa-divider mb-6" />
-      <h2 className="font-display text-lg font-bold text-ink mb-4">District Lookup Tools</h2>
+      <div className="az-divider mb-6" />
+      <h2 className="font-display text-lg font-bold mb-4" style={{ color: '#F0F4F8' }}>District Lookup Tools</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <a
           href="https://www.azleg.gov/find-my-legislator/"
           target="_blank"
           rel="noreferrer"
-          className="wpa-card p-4 group"
+          className="glass-card p-4 group"
         >
           <div className="flex items-center gap-2 mb-1">
-            <ExternalLink size={14} className="text-sage" />
-            <span className="font-ui font-semibold text-xs uppercase tracking-wider text-sage group-hover:text-sage-dark transition-colors">
+            <ExternalLink size={14} style={{ color: '#2D5A3D' }} />
+            <span className="font-ui font-semibold text-xs uppercase tracking-wider transition-colors" style={{ color: '#2D5A3D' }}>
               AZ Legislature - Find My Legislator
             </span>
           </div>
-          <p className="font-body text-xs text-ink/50">Look up your state senator and representatives by address</p>
+          <p className="font-body text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>Look up your state senator and representatives by address</p>
         </a>
 
         <a
           href="https://www.house.gov/representatives/find-your-representative"
           target="_blank"
           rel="noreferrer"
-          className="wpa-card p-4 group"
+          className="glass-card p-4 group"
         >
           <div className="flex items-center gap-2 mb-1">
-            <ExternalLink size={14} className="text-sky-dark" />
-            <span className="font-ui font-semibold text-xs uppercase tracking-wider text-sky-dark group-hover:text-ink transition-colors">
+            <ExternalLink size={14} style={{ color: '#87CEEB' }} />
+            <span className="font-ui font-semibold text-xs uppercase tracking-wider transition-colors" style={{ color: '#87CEEB' }}>
               U.S. House - Find Your Representative
             </span>
           </div>
-          <p className="font-body text-xs text-ink/50">Find your U.S. Congressional representative by ZIP code</p>
+          <p className="font-body text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>Find your U.S. Congressional representative by ZIP code</p>
         </a>
 
         <a
           href="https://www.mesaaz.gov/government/council-districts"
           target="_blank"
           rel="noreferrer"
-          className="wpa-card p-4 group"
+          className="glass-card p-4 group"
         >
           <div className="flex items-center gap-2 mb-1">
-            <ExternalLink size={14} className="text-burgundy" />
-            <span className="font-ui font-semibold text-xs uppercase tracking-wider text-burgundy group-hover:text-burgundy-dark transition-colors">
+            <ExternalLink size={14} style={{ color: '#B87333' }} />
+            <span className="font-ui font-semibold text-xs uppercase tracking-wider transition-colors" style={{ color: '#B87333' }}>
               Mesa Council Districts
             </span>
           </div>
-          <p className="font-body text-xs text-ink/50">View Mesa city council district boundaries and representatives</p>
+          <p className="font-body text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>View Mesa city council district boundaries and representatives</p>
         </a>
 
         <a
           href="https://azredistricting.org/districtlocator/"
           target="_blank"
           rel="noreferrer"
-          className="wpa-card p-4 group"
+          className="glass-card p-4 group"
         >
           <div className="flex items-center gap-2 mb-1">
-            <ExternalLink size={14} className="text-terracotta" />
-            <span className="font-ui font-semibold text-xs uppercase tracking-wider text-terracotta group-hover:text-terracotta-dark transition-colors">
+            <ExternalLink size={14} style={{ color: '#B87333' }} />
+            <span className="font-ui font-semibold text-xs uppercase tracking-wider transition-colors" style={{ color: '#B87333' }}>
               AZ Redistricting Commission
             </span>
           </div>
-          <p className="font-body text-xs text-ink/50">Interactive district maps for both legislative and congressional districts</p>
+          <p className="font-body text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>Interactive district maps for both legislative and congressional districts</p>
         </a>
       </div>
     </motion.div>

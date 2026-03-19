@@ -126,3 +126,37 @@ export const fetchSponsoredBills = (bioguideId: string) =>
 
 export const searchAll = (q: string) =>
   apiFetch<{ representatives: Representative[]; bills: Bill[]; issues: Issue[] }>(`/api/search?q=${encodeURIComponent(q)}`);
+
+// ── OpenStates (state legislators, state bills) ─────────
+
+export const fetchStateLegislatorsByLocation = (lat: number, lng: number) =>
+  apiFetch<unknown>(`/api/openstates?endpoint=people.geo&lat=${lat}&lng=${lng}`);
+
+export const fetchStateLegislators = (jurisdiction?: string, district?: string) => {
+  const params = new URLSearchParams({ endpoint: 'people' });
+  if (jurisdiction) params.set('jurisdiction', jurisdiction);
+  if (district) params.set('district', district);
+  return apiFetch<unknown>(`/api/openstates?${params}`);
+};
+
+export const fetchStateBills = (q?: string, session?: string) => {
+  const params = new URLSearchParams({ endpoint: 'bills' });
+  if (q) params.set('q', q);
+  if (session) params.set('session', session);
+  return apiFetch<unknown>(`/api/openstates?${params}`);
+};
+
+// ── FEC (campaign finance) ──────────────────────────────
+
+export const fetchFECCandidate = (candidateId: string) =>
+  apiFetch<unknown>(`/api/fec?endpoint=candidate&candidate_id=${candidateId}`);
+
+export const fetchFECContributions = (candidateId: string, cycle?: string) =>
+  apiFetch<unknown>(`/api/fec?endpoint=contributions&candidate_id=${candidateId}${cycle ? `&cycle=${cycle}` : ''}`);
+
+export const fetchFECRaces = (office: 'H' | 'S', district?: string, cycle?: string) => {
+  const params = new URLSearchParams({ endpoint: 'races', office });
+  if (district) params.set('district', district);
+  if (cycle) params.set('cycle', cycle);
+  return apiFetch<unknown>(`/api/fec?${params}`);
+};

@@ -3,10 +3,10 @@
 **Project:** Mesa, AZ civic intelligence app
 **Stack:** Vite + React 19 + TypeScript + Tailwind v3 + Framer Motion + Recharts + wouter
 **Backend:** Cloudflare Worker + D1
-**Live:** https://arizona-civics-guide.pages.dev
+**Live:** https://arizona-civics-guide-web.pages.dev
 **API:** https://arizona-civics-api.gamerdad29.workers.dev
 **Repo:** https://github.com/GamerDad29/arizona-civics-guide
-**Last updated:** 2026-03-09
+**Last updated:** 2026-03-19
 
 > Full documentation in `docs/` — STATUS, CHANGELOG, DECISIONS, NEXT-STEPS, KNOWN-ISSUES.
 > Agent instructions in `CLAUDE.md`.
@@ -15,8 +15,9 @@
 
 ## P0 — Blocking
 
-- [ ] **Enable Google Civic API** — API key is configured as a Worker secret, but the API itself isn't enabled in GCP Console. Go to https://console.cloud.google.com/apis/library/civicinfo.googleapis.com and click Enable.
-- [ ] **Connect GitHub auto-deploy** — CF Dashboard → Pages → arizona-civics-guide → Settings → Git → connect repo, branch `main`, build `npm run build`, output `dist`.
+- [x] **Enable Google Civic API** — Enabled in GCP Console (2026-03-19). Endpoint returning 404 "Method not found" — likely API key mismatch, needs re-set via `wrangler secret put GOOGLE_CIVIC_API_KEY`.
+- [x] **Connect GitHub auto-deploy** — Pages project `arizona-civics-guide-web` connected to `GamerDad29/arizona-civics-guide`, branch `main`, build `npm run build`, output `dist`. Deployed 2026-03-19.
+- [x] **Remove `_redirects`** — Deleted `public/_redirects` (caused infinite loop with Workers deploy). SPA routing handled by Pages natively.
 
 ---
 

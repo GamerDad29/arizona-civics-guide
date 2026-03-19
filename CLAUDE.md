@@ -3,7 +3,7 @@
 ## What This Is
 A civic intelligence app for Mesa, Arizona residents. Track representatives, elections, legislation, budget, and local issues across Local, State, and Federal levels.
 
-**Live:** https://arizona-civics-guide.pages.dev
+**Live:** https://arizona-civics-guide-web.pages.dev
 **API:** https://arizona-civics-api.gamerdad29.workers.dev
 **Repo:** https://github.com/GamerDad29/arizona-civics-guide
 

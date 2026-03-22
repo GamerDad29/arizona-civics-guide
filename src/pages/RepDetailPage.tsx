@@ -4,10 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Mail, Phone, Globe, ExternalLink,
   MapPin, FileText, User, Calendar, ChevronDown,
-  Award, Target, Users, Briefcase,
+  Award, Target, Users, Briefcase, DollarSign, Vote,
+  Loader2, ThumbsUp, ThumbsDown, Minus,
 } from 'lucide-react';
-import { fetchRepresentativeById } from '../lib/api';
-import type { Representative } from '../lib/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from 'recharts';
+import {
+  fetchRepresentativeById, fetchFECCandidate, fetchFECContributions,
+  fetchMemberVotes,
+} from '../lib/api';
+import type { Representative, VoteRecord } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 
 type Zone = 'local' | 'state' | 'federal';
@@ -350,6 +355,20 @@ export function RepDetailPage() {
               </motion.div>
             )}
 
+            {/* Voting Record (federal reps) */}
+            {zone === 'federal' && rep.bioguide_id && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <VotingRecordSection bioguideId={rep.bioguide_id} />
+              </motion.div>
+            )}
+
+            {/* Campaign Finance (federal reps) */}
+            {zone === 'federal' && rep.fec_candidate_id && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                <CampaignFinanceSection candidateId={rep.fec_candidate_id} fecUrl={rep.fec_url} />
+              </motion.div>
+            )}
+
             {/* Quick stats */}
             {(rep.elected || rep.next_election) && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
@@ -424,6 +443,293 @@ function getBillSummary(billTitle: string): string {
   if (title.includes('disclosure') || title.includes('transparency') || title.includes('accountability')) return `This bill aims to increase government or financial transparency. It proposes new reporting requirements or disclosure rules.`;
   // Default
   return `${name}. This legislation was introduced to address this issue at the federal level. Click below to read the full text and track its progress.`;
+}
+
+/* ── Voting Record Section ─── */
+function VotingRecordSection({ bioguideId }: { bioguideId: string }) {
+  const [votes, setVotes] = useState<VoteRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'Yea' | 'Nay'>('all');
+
+  async function loadVotes() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchMemberVotes(bioguideId, 30);
+      // Congress.gov returns votes in various formats, normalize
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parsed = ((data as any).votes || []).map((v: Record<string, unknown>) => ({
+        date: (v.date as string) || '',
+        rollNumber: (v.rollNumber as number) || 0,
+        question: (v.question as string) || (v.description as string) || '',
+        result: (v.result as string) || '',
+        description: (v.description as string) || '',
+        memberPosition: (v.memberPosition as string) || (v.position as string) || '',
+        url: (v.url as string) || '',
+        congress: (v.congress as number) || 119,
+        chamber: (v.chamber as string) || '',
+      }));
+      setVotes(parsed);
+      setLoaded(true);
+    } catch {
+      setError('Could not load voting record. Try again in a moment.');
+    }
+    setLoading(false);
+  }
+
+  const filtered = filter === 'all' ? votes : votes.filter(v =>
+    v.memberPosition?.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const voteIcon = (position: string) => {
+    const p = position?.toLowerCase() || '';
+    if (p.includes('yea') || p.includes('yes') || p.includes('aye')) return <ThumbsUp size={12} />;
+    if (p.includes('nay') || p.includes('no')) return <ThumbsDown size={12} />;
+    return <Minus size={12} />;
+  };
+
+  const voteColor = (position: string) => {
+    const p = position?.toLowerCase() || '';
+    if (p.includes('yea') || p.includes('yes') || p.includes('aye')) return { bg: 'rgba(45,90,61,0.15)', color: '#3D7A53' };
+    if (p.includes('nay') || p.includes('no')) return { bg: 'rgba(184,58,58,0.15)', color: '#D86B6B' };
+    return { bg: 'rgba(240,244,248,0.06)', color: 'rgba(240,244,248,0.4)' };
+  };
+
+  return (
+    <div>
+      <SectionHead icon={<Vote size={18} />} title="How they voted" />
+      <p className="text-xs mb-3" style={{ color: 'rgba(240,244,248,0.4)' }}>
+        Roll call votes on the record. This is what they actually did, not what they said they'd do.
+      </p>
+
+      {!loaded && !loading && (
+        <button onClick={loadVotes} className="btn btn-outline text-xs">
+          Load voting record
+        </button>
+      )}
+
+      {loading && (
+        <div className="flex items-center gap-2 py-4">
+          <Loader2 size={14} className="animate-spin" style={{ color: '#B87333' }} />
+          <span className="text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>Loading votes...</span>
+        </div>
+      )}
+
+      {error && <p className="text-xs" style={{ color: '#E25822' }}>{error}</p>}
+
+      {loaded && votes.length === 0 && (
+        <p className="text-sm" style={{ color: 'rgba(240,244,248,0.4)' }}>No roll call votes found.</p>
+      )}
+
+      {loaded && votes.length > 0 && (
+        <>
+          <div className="flex gap-2 mb-3">
+            {(['all', 'Yea', 'Nay'] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                className="px-2.5 py-1 rounded text-2xs font-ui font-bold uppercase tracking-wider transition-colors"
+                style={{
+                  background: filter === f ? 'rgba(184,115,51,0.15)' : 'transparent',
+                  color: filter === f ? '#B87333' : 'rgba(240,244,248,0.4)',
+                  border: `1px solid ${filter === f ? 'rgba(184,115,51,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                }}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {filtered.slice(0, 15).map((v, i) => {
+              const vc = voteColor(v.memberPosition);
+              return (
+                <div key={i} className="glass-card p-3 flex items-center gap-3">
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-ui font-bold uppercase flex-shrink-0"
+                    style={{ background: vc.bg, color: vc.color }}>
+                    {voteIcon(v.memberPosition)} {v.memberPosition || 'N/A'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: '#F0F4F8' }}>{v.question || v.description}</p>
+                    <p className="text-2xs" style={{ color: 'rgba(240,244,248,0.35)' }}>
+                      {v.date} · {v.result}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {filtered.length > 15 && (
+            <p className="text-2xs mt-2" style={{ color: 'rgba(240,244,248,0.3)' }}>
+              Showing 15 of {filtered.length} votes
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Campaign Finance Section ─── */
+function CampaignFinanceSection({ candidateId, fecUrl }: { candidateId: string; fecUrl: string | null }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [finance, setFinance] = useState<Record<string, any> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [contributions, setContributions] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadFinance() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [finData, contribData] = await Promise.all([
+        fetchFECCandidate(candidateId),
+        fetchFECContributions(candidateId),
+      ]);
+      setFinance(finData as Record<string, unknown>);
+      setContributions(contribData as Record<string, unknown>);
+      setLoaded(true);
+    } catch {
+      setError('Campaign finance data temporarily unavailable. The FEC limits how often we can check.');
+    }
+    setLoading(false);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totals = (finance as any)?.results?.[0] || null;
+
+  const formatMoney = (n: number | null | undefined) => {
+    if (!n && n !== 0) return 'N/A';
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+    return `$${n.toLocaleString()}`;
+  };
+
+  // Build donor breakdown chart data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contribResults = (contributions as any)?.results || [];
+  const chartData = contribResults.map((c: { size: number; total: number }) => ({
+    name: c.size <= 200 ? 'Small donors (<$200)' : c.size <= 999 ? 'Mid ($200-$999)' : 'Large ($1000+)',
+    amount: c.total || 0,
+  }));
+
+  const CHART_COLORS = ['#3D7A53', '#B87333', '#D86B6B'];
+
+  return (
+    <div>
+      <SectionHead icon={<DollarSign size={18} />} title="Follow the money" />
+      <p className="text-xs mb-3" style={{ color: 'rgba(240,244,248,0.4)' }}>
+        Campaign finance data from the FEC. Where the money comes from matters.
+      </p>
+
+      {!loaded && !loading && (
+        <button onClick={loadFinance} className="btn btn-outline text-xs">
+          Load campaign finance
+        </button>
+      )}
+
+      {loading && (
+        <div className="flex items-center gap-2 py-4">
+          <Loader2 size={14} className="animate-spin" style={{ color: '#B87333' }} />
+          <span className="text-xs" style={{ color: 'rgba(240,244,248,0.4)' }}>Loading finance data...</span>
+        </div>
+      )}
+
+      {error && <p className="text-xs" style={{ color: '#E25822' }}>{error}</p>}
+
+      {loaded && totals && (
+        <>
+          {/* Summary tiles */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="glass-card p-3 text-center">
+              <p className="az-label text-2xs mb-0.5">Total Raised</p>
+              <p className="font-display font-bold text-lg" style={{ color: '#3D7A53' }}>
+                {formatMoney(totals.receipts)}
+              </p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="az-label text-2xs mb-0.5">Total Spent</p>
+              <p className="font-display font-bold text-lg" style={{ color: '#D86B6B' }}>
+                {formatMoney(totals.disbursements)}
+              </p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="az-label text-2xs mb-0.5">Cash on Hand</p>
+              <p className="font-display font-bold text-lg" style={{ color: '#B87333' }}>
+                {formatMoney(totals.last_cash_on_hand_end_period)}
+              </p>
+            </div>
+          </div>
+
+          {/* Individual vs PAC */}
+          {(totals.individual_contributions || totals.other_political_committee_contributions) && (
+            <div className="glass-card p-4 mb-4">
+              <p className="az-label text-2xs mb-2">Where the money comes from</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-body" style={{ color: 'rgba(240,244,248,0.6)' }}>Individual donations</span>
+                  <span className="text-xs font-bold" style={{ color: '#3D7A53' }}>{formatMoney(totals.individual_contributions)}</span>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full" style={{
+                    width: `${Math.round((totals.individual_contributions / (totals.receipts || 1)) * 100)}%`,
+                    background: '#3D7A53',
+                  }} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-body" style={{ color: 'rgba(240,244,248,0.6)' }}>PAC contributions</span>
+                  <span className="text-xs font-bold" style={{ color: '#D86B6B' }}>{formatMoney(totals.other_political_committee_contributions)}</span>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full" style={{
+                    width: `${Math.round((totals.other_political_committee_contributions / (totals.receipts || 1)) * 100)}%`,
+                    background: '#D86B6B',
+                  }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Donor size breakdown chart */}
+          {chartData.length > 0 && (
+            <div className="glass-card p-4 mb-4">
+              <p className="az-label text-2xs mb-2">Donations by size</p>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 10 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: 'rgba(240,244,248,0.4)' }} />
+                  <Tooltip
+                    formatter={(value) => formatMoney(value as number)}
+                    contentStyle={{ background: '#1A2332', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: '#F0F4F8' }}
+                  />
+                  <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
+                    {chartData.map((_: unknown, i: number) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Cycle info + FEC link */}
+          <div className="flex items-center justify-between">
+            <p className="text-2xs" style={{ color: 'rgba(240,244,248,0.3)' }}>
+              Cycle: {totals.cycle || 'Latest'} · Source: FEC
+            </p>
+            {fecUrl && (
+              <a href={fecUrl} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 text-2xs font-ui font-semibold uppercase tracking-wider"
+                style={{ color: '#B87333' }}>
+                Full FEC filing <ExternalLink size={10} />
+              </a>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 /* ── Expandable bill card ─── */

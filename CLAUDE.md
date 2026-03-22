@@ -277,10 +277,13 @@ The site should let ANYONE in Arizona (including a 17-year-old about to vote) en
 3. **Homepage: B-roll video backgrounds + unique UI** — stop looking AI-made. Use Pexels/Storyblocks AZ footage. Deep research on distinctive approaches.
 4. **Multi-city support** — rep data, budgets, and issues for all major AZ cities (not just Mesa)
 5. **Bills page: comprehensive active legislation** — way more than 3 bills. Pull from Congress.gov + OpenStates for state bills
-6. **RepDetailPage: Incumbent vs Challenger** — scrape Ballotpedia for declared opponents, show side-by-side
-7. **RepDetailPage: "What have they done?"** — factual accomplishments/record section per rep
-8. **Campaign finance on rep pages** — FEC data showing donors, PACs, small-dollar %, corporate money
-9. **Expandable bill summaries** — 2-sentence "what this bill IS" (not where it stands), with opposition context on click
+6. **RepDetailPage: Full voting record** — not just sponsored bills. How did they vote on OTHER bills? Pull roll call votes from Congress.gov (federal) and OpenStates (state). Show vote position (Yea/Nay/Abstain) on key legislation.
+7. **RepDetailPage: News coverage section** — pull from mainstream sources with journalistic integrity (AP News, Reuters, local outlets like AZ Central/Arizona Republic for local reps). Show citations, quotes, what's going on. Link out so the reader can learn more. NO opinion blogs, NO partisan media.
+8. **Campaign finance on rep pages** — FEC data showing donors, PACs, small-dollar %, corporate money. Follow the money. This is a priority feature.
+9. **RepDetailPage: "Peek under the hood"** — an opt-in expandable section at the bottom of each rep page. This is where the noisier, more subjective stuff lives: social media activity (Twitter/X, Bluesky, Truth Social), posting frequency, tone. The idea is: news coverage and voting record are facts that belong on the page by default. Social media is performative and optional, so the user chooses to look. A clear "Peek Under the Hood" toggle/accordion that reveals social media summary, maybe PAC connections, endorsements, etc.
+11. **RepDetailPage: Incumbent vs Challenger** — scrape Ballotpedia for declared opponents, show side-by-side
+12. **RepDetailPage: "What have they done?"** — factual accomplishments/record section per rep
+13. **Expandable bill summaries** — 2-sentence "what this bill IS" (not where it stands), with opposition context on click
 10. **Take Action page** — needs to be dynamic per user location, not static
 11. **Contact Your Reps** — dynamic based on geolocation, not hardcoded Mesa contacts
 12. Add LD12 state legislators (blocked on OpenStates key)

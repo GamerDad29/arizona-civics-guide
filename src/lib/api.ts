@@ -33,6 +33,7 @@ export interface Representative {
   fec_url: string | null;
   ballotpedia_url: string | null;
   bioguide_id: string | null;
+  fec_candidate_id: string | null;
 }
 
 export interface ElectionDeadline {
@@ -126,6 +127,79 @@ export const fetchSponsoredBills = (bioguideId: string) =>
 
 export const searchAll = (q: string) =>
   apiFetch<{ representatives: Representative[]; bills: Bill[]; issues: Issue[] }>(`/api/search?q=${encodeURIComponent(q)}`);
+
+// ── Location / Personalization ───────────────────────────
+
+export interface CivicOfficial {
+  name: string;
+  party: string | null;
+  phones: string[];
+  urls: string[];
+  photoUrl: string | null;
+  emails: string[];
+  channels: { type: string; id: string }[];
+  office: { name: string; divisionId: string; levels: string[]; roles: string[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  d1Match: Representative | Record<string, any> | null;
+}
+
+export interface LocationProfile {
+  address: string;
+  city: string;
+  county: string;
+  state: string;
+  zip: string;
+  legislativeDistrict: number | null;
+  congressionalDistrict: number | null;
+  officials: CivicOfficial[];
+  lat: number | null;
+  lng: number | null;
+}
+
+export const fetchLocation = (address: string) =>
+  apiFetch<LocationProfile>(`/api/locate?address=${encodeURIComponent(address)}`);
+
+export const fetchLocationByCoords = (lat: number, lng: number) =>
+  apiFetch<LocationProfile>(`/api/locate?lat=${lat}&lng=${lng}`);
+
+// ── Congress.gov: votes + bill search ────────────────────
+
+export interface VoteRecord {
+  date: string;
+  rollNumber: number;
+  question: string;
+  result: string;
+  description: string;
+  memberPosition: string;
+  url: string;
+  congress: number;
+  chamber: string;
+}
+
+export interface CongressBill {
+  congress: number;
+  type: string;
+  number: number;
+  title: string;
+  latestAction?: { actionDate: string; text: string };
+  originChamber?: string;
+  url: string;
+  updateDate?: string;
+}
+
+export const fetchMemberVotes = (bioguideId: string, limit = 20, offset = 0) =>
+  apiFetch<{ votes: VoteRecord[] }>(`/api/congress?action=votes&bioguideId=${bioguideId}&limit=${limit}&offset=${offset}`);
+
+export const fetchCongressBills = (q?: string, congress = '119', limit = 20, offset = 0) => {
+  const params = new URLSearchParams({ action: 'bills', congress, limit: String(limit), offset: String(offset) });
+  if (q) params.set('q', q);
+  return apiFetch<{ bills: CongressBill[]; pagination: { count: number } }>(`/api/congress?${params}`);
+};
+
+// ── FEC: campaign finance (spending fetcher) ────────────
+
+export const fetchFECSpending = (candidateId: string, cycle?: string) =>
+  apiFetch<unknown>(`/api/fec?endpoint=spending&candidate_id=${candidateId}${cycle ? `&cycle=${cycle}` : ''}`);
 
 // ── OpenStates (state legislators, state bills) ─────────
 

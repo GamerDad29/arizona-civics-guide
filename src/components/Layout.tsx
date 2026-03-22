@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 import { Navbar } from './Navbar';
+import { useUserLocation } from '../context/UserLocationContext';
 
 export function Layout({ children }: { children: ReactNode }) {
+  const { location, isPersonalized } = useUserLocation();
+  const cityName = isPersonalized ? location.city : null;
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#0F1923' }}>
       <Navbar />
@@ -11,13 +15,14 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="font-display font-bold text-sm" style={{ color: '#F0F4F8' }}>Arizona Civics Guide</p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(240,244,248,0.4)' }}>Mesa, AZ · Not affiliated with any government entity</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(240,244,248,0.4)' }}>
+                {cityName ? `${cityName}, AZ` : 'Arizona'} · Not affiliated with any government entity
+              </p>
             </div>
             <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'rgba(240,244,248,0.3)' }}>
               <a href="https://azsos.gov/elections" target="_blank" rel="noreferrer" className="transition-colors" style={{ color: 'inherit' }} onMouseEnter={e => (e.currentTarget.style.color = '#B87333')} onMouseLeave={e => (e.currentTarget.style.color = 'inherit')}>AZ Elections</a>
               <a href="https://www.azleg.gov/" target="_blank" rel="noreferrer" className="transition-colors" style={{ color: 'inherit' }} onMouseEnter={e => (e.currentTarget.style.color = '#B87333')} onMouseLeave={e => (e.currentTarget.style.color = 'inherit')}>AZ Legislature</a>
               <a href="https://www.congress.gov/" target="_blank" rel="noreferrer" className="transition-colors" style={{ color: 'inherit' }} onMouseEnter={e => (e.currentTarget.style.color = '#B87333')} onMouseLeave={e => (e.currentTarget.style.color = 'inherit')}>Congress.gov</a>
-              <a href="https://www.mesaaz.gov/" target="_blank" rel="noreferrer" className="transition-colors" style={{ color: 'inherit' }} onMouseEnter={e => (e.currentTarget.style.color = '#B87333')} onMouseLeave={e => (e.currentTarget.style.color = 'inherit')}>City of Mesa</a>
             </div>
           </div>
           <div className="copper-line mt-6 mb-3 opacity-30" />

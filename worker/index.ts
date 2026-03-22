@@ -82,12 +82,29 @@ async function getBills(env: Env, url: URL, corsH: Record<string, string>): Prom
   return json(results.map(r => parseJsonFields(r, ['tags'])), 200, corsH);
 }
 
-async function getBudget(env: Env, corsH: Record<string, string>): Promise<Response> {
+async function getBudget(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
+  const city = url.searchParams.get('city')?.toLowerCase() || 'mesa';
+
+  // Check if budget_segments has a city column (graceful)
   const { results } = await env.DB.prepare('SELECT * FROM budget_segments ORDER BY percent DESC').all();
+
+  // For now, only Mesa has budget data
+  if (city !== 'mesa') {
+    return json({
+      fiscalYear: null,
+      total: null,
+      segments: [],
+      cityName: city,
+      available: false,
+    }, 200, corsH);
+  }
+
   return json({
     fiscalYear: '2025-26',
     total: '$2.1 Billion',
     segments: results,
+    cityName: 'Mesa',
+    available: true,
   }, 200, corsH);
 }
 
@@ -155,10 +172,50 @@ async function getCongressMembers(env: Env, url: URL, corsH: Record<string, stri
     return json({ error: 'Congress API key not configured' }, 503, corsH);
   }
 
+  const action = url.searchParams.get('action');
   const bioguideId = url.searchParams.get('bioguideId');
 
+  // Member votes (roll call voting record)
+  if (action === 'votes' && bioguideId) {
+    const limit = url.searchParams.get('limit') || '20';
+    const offset = url.searchParams.get('offset') || '0';
+    const congressUrl = `https://api.congress.gov/v3/member/${bioguideId}/votes?api_key=${env.CONGRESS_API_KEY}&limit=${limit}&offset=${offset}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Bill search
+  if (action === 'bills') {
+    const q = url.searchParams.get('q') || '';
+    const congress = url.searchParams.get('congress') || '119';
+    const limit = url.searchParams.get('limit') || '20';
+    const offset = url.searchParams.get('offset') || '0';
+    const sort = url.searchParams.get('sort') || 'updateDate+desc';
+    let congressUrl = `https://api.congress.gov/v3/bill/${congress}?api_key=${env.CONGRESS_API_KEY}&limit=${limit}&offset=${offset}&sort=${sort}`;
+    if (q) congressUrl += `&q=${encodeURIComponent(q)}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Single bill detail
+  if (action === 'bill') {
+    const congress = url.searchParams.get('congress') || '119';
+    const type = url.searchParams.get('type') || 'hr';
+    const number = url.searchParams.get('number');
+    if (!number) return json({ error: 'number required for bill detail' }, 400, corsH);
+    const congressUrl = `https://api.congress.gov/v3/bill/${congress}/${type}/${number}?api_key=${env.CONGRESS_API_KEY}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Sponsored legislation for a specific member (existing behavior)
   if (bioguideId) {
-    // Get sponsored legislation for a specific member
     const congressUrl = `https://api.congress.gov/v3/member/${bioguideId}/sponsored-legislation?api_key=${env.CONGRESS_API_KEY}&limit=10&sort=updateDate+desc`;
     const resp = await fetch(congressUrl);
     if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
@@ -296,6 +353,213 @@ async function getFEC(env: Env, url: URL, corsH: Record<string, string>): Promis
   return json(data, 200, corsH);
 }
 
+// ── Location resolver (personalization engine) ──────────
+
+function normalizeName(name: string): string {
+  return name.toLowerCase()
+    .replace(/\b(jr|sr|iii|ii|iv)\b\.?/gi, '')
+    .replace(/\b[a-z]\.\s*/g, '') // strip middle initials
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+interface CivicOfficial {
+  name: string;
+  party: string | null;
+  phones: string[];
+  urls: string[];
+  photoUrl: string | null;
+  emails: string[];
+  channels: { type: string; id: string }[];
+  office: { name: string; divisionId: string; levels: string[]; roles: string[] };
+}
+
+function parseDivisionsResponse(data: Record<string, unknown>, addressInput: string): {
+  city: string; county: string; state: string;
+  legislativeDistrict: number | null; congressionalDistrict: number | null;
+  divisions: Record<string, { name: string }>;
+} {
+  let legislativeDistrict: number | null = null;
+  let congressionalDistrict: number | null = null;
+  let county = '';
+  let city = '';
+  let state = 'AZ';
+
+  // Parse normalizedInput if available
+  const input = (data.normalizedInput || {}) as Record<string, string>;
+  if (input.city) city = input.city;
+  if (input.state) state = input.state;
+
+  const divisions = (data.divisions || {}) as Record<string, { name: string; aliases?: string[] }>;
+  for (const [ocdId, div] of Object.entries(divisions)) {
+    const cdMatch = ocdId.match(/\/cd:(\d+)/);
+    if (cdMatch) congressionalDistrict = parseInt(cdMatch[1], 10);
+
+    const sldlMatch = ocdId.match(/\/sldl:(\d+)/);
+    const slduMatch = ocdId.match(/\/sldu:(\d+)/);
+    if (sldlMatch) legislativeDistrict = parseInt(sldlMatch[1], 10);
+    else if (slduMatch && !legislativeDistrict) legislativeDistrict = parseInt(slduMatch[1], 10);
+
+    if (ocdId.includes('/county:')) county = div.name || '';
+
+    // Extract city from place division
+    if (ocdId.match(/\/place:/)) {
+      city = city || div.name || '';
+    }
+  }
+
+  // Fallback: extract city from address string
+  if (!city && addressInput) {
+    const parts = addressInput.split(',').map(p => p.trim());
+    if (parts.length >= 2) city = parts[parts.length - 2] || parts[1] || '';
+    // Clean up city (remove state/zip if stuck together)
+    city = city.replace(/\s+(AZ|Arizona)\s*\d*/i, '').trim();
+  }
+
+  return { city, county, state, legislativeDistrict, congressionalDistrict, divisions };
+}
+
+async function getLocation(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
+  let address = url.searchParams.get('address');
+  const lat = url.searchParams.get('lat');
+  const lng = url.searchParams.get('lng');
+
+  if (!address && (!lat || !lng)) {
+    return json({ error: 'Provide address or lat+lng' }, 400, corsH);
+  }
+
+  // Reverse geocode if lat/lng provided
+  if (!address && lat && lng) {
+    try {
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        { headers: { 'User-Agent': 'ArizonaCivicsGuide/1.0', 'Accept-Language': 'en' } }
+      );
+      const geo = await resp.json() as Record<string, unknown>;
+      const addr = geo.address as Record<string, string> | undefined;
+      if (addr) {
+        const parts = [
+          addr.house_number, addr.road, addr.city || addr.town || addr.village,
+          addr.state, addr.postcode
+        ].filter(Boolean);
+        address = parts.join(', ');
+      }
+    } catch { /* fall through */ }
+    if (!address) return json({ error: 'Could not reverse geocode coordinates' }, 400, corsH);
+  }
+
+  if (!address) return json({ error: 'No address resolved' }, 400, corsH);
+
+  if (!env.GOOGLE_CIVIC_API_KEY) {
+    return json({ error: 'Google Civic API key not configured' }, 503, corsH);
+  }
+
+  const cacheKey = `locate:${address.trim().toLowerCase()}`;
+  const cached = await env.DB.prepare(
+    "SELECT reps_json, cached_at FROM zip_cache WHERE zip = ? AND datetime(cached_at, '+24 hours') > datetime('now')"
+  ).bind(cacheKey).first();
+
+  let divisionsData: Record<string, unknown>;
+  if (cached?.reps_json) {
+    divisionsData = JSON.parse(cached.reps_json as string);
+  } else {
+    // Use divisionsByAddress (the replacement for deprecated representatives endpoint)
+    const divUrl = `https://civicinfo.googleapis.com/civicinfo/v2/divisionsByAddress?address=${encodeURIComponent(address)}&key=${env.GOOGLE_CIVIC_API_KEY}`;
+    const resp = await fetch(divUrl);
+    if (!resp.ok) {
+      const err = await resp.text();
+      return json({ error: 'Google Civic API error', detail: err }, resp.status, corsH);
+    }
+    divisionsData = await resp.json() as Record<string, unknown>;
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO zip_cache (zip, reps_json, cached_at) VALUES (?, ?, datetime('now'))"
+    ).bind(cacheKey, JSON.stringify(divisionsData)).run();
+  }
+
+  const parsed = parseDivisionsResponse(divisionsData, address);
+
+  // Fetch D1 reps and build officials list from them
+  const { results: d1Reps } = await env.DB.prepare('SELECT * FROM representatives ORDER BY name').all();
+  const enrichedReps = d1Reps.map(r => parseJsonFields(r, ['contacts', 'links', 'votes', 'background', 'priorities', 'backers']));
+
+  // Filter D1 reps to those matching this user's location
+  const matchingOfficials: CivicOfficial[] = [];
+
+  for (const rep of enrichedReps) {
+    const repLevel = rep.level as string;
+    const repCity = (rep.district as string || '').toLowerCase();
+    const userCity = parsed.city.toLowerCase();
+
+    let matches = false;
+
+    if (repLevel === 'federal') {
+      // Federal reps: match if same CD or senators (statewide)
+      const title = (rep.title as string || '').toLowerCase();
+      if (title.includes('senator')) {
+        matches = true; // Senators represent all AZ
+      } else if (parsed.congressionalDistrict) {
+        const distStr = rep.district as string || '';
+        const distNum = parseInt(distStr.replace(/\D/g, ''), 10);
+        if (distNum === parsed.congressionalDistrict) matches = true;
+      }
+    } else if (repLevel === 'state') {
+      // State reps: match statewide officials (governor etc) or by LD
+      const title = (rep.title as string || '').toLowerCase();
+      if (title.includes('governor') || title.includes('secretary') || title.includes('attorney') || title.includes('treasurer') || title.includes('superintendent')) {
+        matches = true; // Statewide officials
+      } else if (parsed.legislativeDistrict) {
+        const distStr = rep.district as string || '';
+        const distNum = parseInt(distStr.replace(/\D/g, ''), 10);
+        if (distNum === parsed.legislativeDistrict) matches = true;
+      }
+    } else if (repLevel === 'local') {
+      // Local reps: match by city name
+      if (userCity && (repCity.includes(userCity) || userCity.includes(repCity))) {
+        matches = true;
+      }
+      // Also match if district contains city name
+      const repName = (rep.name as string || '').toLowerCase();
+      if (!matches && repCity === '' && userCity === 'mesa') {
+        // Mesa-specific: all local reps without district are Mesa officials
+        matches = true;
+      }
+    }
+
+    if (matches) {
+      matchingOfficials.push({
+        name: rep.name as string,
+        party: rep.party as string | null,
+        phones: [],
+        urls: [],
+        photoUrl: rep.photo_url as string | null,
+        emails: [],
+        channels: [],
+        office: {
+          name: rep.title as string,
+          divisionId: '',
+          levels: [repLevel === 'federal' ? 'country' : repLevel === 'state' ? 'administrativeArea1' : 'locality'],
+          roles: [],
+        },
+        d1Match: rep as unknown as Record<string, unknown>,
+      });
+    }
+  }
+
+  return json({
+    address,
+    city: parsed.city,
+    county: parsed.county,
+    state: parsed.state,
+    zip: '',
+    legislativeDistrict: parsed.legislativeDistrict,
+    congressionalDistrict: parsed.congressionalDistrict,
+    officials: matchingOfficials,
+    lat: lat ? parseFloat(lat) : null,
+    lng: lng ? parseFloat(lng) : null,
+  }, 200, corsH);
+}
+
 // ── Full-text search ────────────────────────────────────
 
 async function search(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
@@ -356,13 +620,14 @@ export default {
       if (path === '/api/representatives') return await getRepresentatives(env, url, corsH);
       if (path === '/api/elections')       return await getElections(env, corsH);
       if (path === '/api/bills')           return await getBills(env, url, corsH);
-      if (path === '/api/budget')          return await getBudget(env, corsH);
+      if (path === '/api/budget')          return await getBudget(env, url, corsH);
       if (path === '/api/issues')          return await getIssues(env, url, corsH);
       if (path === '/api/civic')           return await getCivicByAddress(env, url, corsH);
       if (path === '/api/congress')        return await getCongressMembers(env, url, corsH);
       if (path === '/api/openstates')      return await getOpenStates(env, url, corsH);
       if (path === '/api/fec')             return await getFEC(env, url, corsH);
       if (path === '/api/search')          return await search(env, url, corsH);
+      if (path === '/api/locate')           return await getLocation(env, url, corsH);
       if (path === '/api/health')          return json({ status: 'ok', db: 'arizona-civics' }, 200, corsH);
 
       return json({ error: 'Not found', endpoints: [
@@ -375,6 +640,7 @@ export default {
         '/api/congress?bioguideId=',
         '/api/openstates?endpoint=people|people.geo|bills|committees&lat=&lng=&jurisdiction=&district=&q=',
         '/api/fec?endpoint=candidates|candidate|contributions|spending|races&candidate_id=&name=&state=AZ&cycle=2024&office=H|S',
+        '/api/locate?address=|lat=&lng=',
         '/api/search?q=',
         '/api/health',
       ]}, 404, corsH);

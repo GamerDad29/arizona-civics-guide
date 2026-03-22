@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, MessageSquare } from 'lucide-react';
+import { Mail, MessageSquare, MapPin } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { fetchIssues } from '../lib/api';
 import type { Issue } from '../lib/api';
+import { useUserLocation } from '../context/UserLocationContext';
 
 const ISSUE_COLORS: Record<string, string> = {
   housing: '#B87333', education: '#5B8FD8', transportation: '#9B8BBE',
@@ -14,6 +15,9 @@ const ISSUE_COLORS: Record<string, string> = {
 export function IssuesPage() {
   const { data: issues, loading } = useApi(() => fetchIssues(), []);
   const [selected, setSelected] = useState<Issue | null>(null);
+  const { location: userLoc, isPersonalized } = useUserLocation();
+  const cityName = isPersonalized ? userLoc.city || 'Mesa' : 'Mesa';
+  const isMesa = cityName.toLowerCase() === 'mesa';
 
   const active = selected ?? issues?.[0] ?? null;
   const color = active ? (ISSUE_COLORS[active.id] ?? '#B87333') : '#B87333';
@@ -63,6 +67,22 @@ export function IssuesPage() {
             </div>
 
             <p className="az-label mb-3" style={{ color }}>Who to Contact</p>
+
+            {/* Non-Mesa location notice */}
+            {isPersonalized && !isMesa && (
+              <div className="glass-card p-4 mb-3 flex items-start gap-3" style={{ borderColor: 'rgba(184,115,51,0.2)' }}>
+                <MapPin size={14} style={{ color: '#B87333', flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: '#F0F4F8' }}>
+                    Contacts shown are for Mesa. {cityName}-specific contacts coming soon.
+                  </p>
+                  <p className="text-2xs mt-1" style={{ color: 'rgba(240,244,248,0.4)' }}>
+                    Contact your {cityName} city council about this issue through your city's website.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {active.contacts.map((c, i) => (
                 <div key={i} className="glass-card p-4 flex items-start gap-4">

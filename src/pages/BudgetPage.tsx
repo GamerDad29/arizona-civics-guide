@@ -1,11 +1,30 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, ExternalLink } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { fetchBudget } from '../lib/api';
+import { useUserLocation } from '../context/UserLocationContext';
+
+const CITY_BUDGET_URLS: Record<string, string> = {
+  mesa: 'https://www.mesaaz.gov/business/budget',
+  phoenix: 'https://www.phoenix.gov/budget',
+  tucson: 'https://www.tucsonaz.gov/finance',
+  chandler: 'https://www.chandleraz.gov/government/departments/management-services/budget',
+  scottsdale: 'https://www.scottsdaleaz.gov/finance/budget',
+  tempe: 'https://www.tempe.gov/government/financial-services/budget',
+  gilbert: 'https://www.gilbertaz.gov/departments/management-budget',
+  glendale: 'https://www.glendaleaz.com/government/departments/budget-and-finance',
+  peoria: 'https://www.peoriaaz.gov/government/departments/budget',
+  surprise: 'https://www.surpriseaz.gov/161/Budget',
+};
 
 export function BudgetPage() {
+  const { location: userLoc, isPersonalized } = useUserLocation();
+  const cityName = isPersonalized ? userLoc.city || 'Mesa' : 'Mesa';
   const { data: budget, loading } = useApi(() => fetchBudget(), []);
+
+  const isMesa = cityName.toLowerCase() === 'mesa';
+  const budgetUrl = CITY_BUDGET_URLS[cityName.toLowerCase()] || null;
 
   if (loading || !budget) return <div className="max-w-3xl mx-auto px-4 py-10"><p style={{ color: 'rgba(240,244,248,0.3)' }}>Loading...</p></div>;
 
@@ -18,10 +37,43 @@ export function BudgetPage() {
           <DollarSign size={16} style={{ color: '#2D5A3D' }} />
           <p className="az-label" style={{ color: '#2D5A3D' }}>Budget & Transparency</p>
         </div>
-        <h1 className="font-display font-bold text-3xl mb-2" style={{ color: '#F0F4F8' }}>Mesa City Budget</h1>
-        <p className="text-sm" style={{ color: 'rgba(240,244,248,0.5)' }}>FY {budget.fiscalYear} · {budget.total} Total · Where your tax dollars go</p>
+        <h1 className="font-display font-bold text-3xl mb-2" style={{ color: '#F0F4F8' }}>{cityName} City Budget</h1>
+        {isMesa ? (
+          <p className="text-sm" style={{ color: 'rgba(240,244,248,0.5)' }}>FY {budget.fiscalYear} · {budget.total} Total · Where your tax dollars go</p>
+        ) : (
+          <p className="text-sm" style={{ color: 'rgba(240,244,248,0.5)' }}>
+            Budget data for {cityName}
+          </p>
+        )}
       </div>
 
+      {/* Non-Mesa city: show coming soon + link */}
+      {!isMesa && (
+        <div className="glass-card p-8 text-center mb-8">
+          <p className="font-display font-bold text-lg mb-2" style={{ color: '#F0F4F8' }}>
+            {cityName} Budget Data Coming Soon
+          </p>
+          <p className="text-sm mb-4" style={{ color: 'rgba(240,244,248,0.5)' }}>
+            We're working on adding budget breakdowns for cities across Arizona. In the meantime, you can view {cityName}'s budget directly.
+          </p>
+          {budgetUrl ? (
+            <a href={budgetUrl} target="_blank" rel="noreferrer" className="btn btn-copper text-xs">
+              <ExternalLink size={12} /> View {cityName} Budget
+            </a>
+          ) : (
+            <p className="text-xs" style={{ color: 'rgba(240,244,248,0.3)' }}>
+              Search "{cityName} AZ city budget" for the latest budget information.
+            </p>
+          )}
+
+          <div className="az-divider my-6" />
+          <p className="text-xs mb-3" style={{ color: 'rgba(240,244,248,0.3)' }}>
+            Here's Mesa's budget as an example of what this looks like:
+          </p>
+        </div>
+      )}
+
+      {/* Budget chart (always shows Mesa data for now) */}
       <div className="grid gap-8 lg:grid-cols-2 items-start mb-8">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -58,8 +110,9 @@ export function BudgetPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <a href="https://www.mesaaz.gov/business/budget" target="_blank" rel="noreferrer" className="btn btn-outline text-xs">Full Budget</a>
-        <a href="https://www.mesaaz.gov/Government/City-Council-Meetings" target="_blank" rel="noreferrer" className="btn btn-outline text-xs">Budget Hearings</a>
+        <a href={CITY_BUDGET_URLS.mesa} target="_blank" rel="noreferrer" className="btn btn-outline text-xs">
+          {isMesa ? 'Full Budget' : 'Mesa Full Budget'}
+        </a>
       </div>
     </motion.div>
   );

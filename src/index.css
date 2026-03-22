@@ -23,7 +23,7 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Playfair Display', Georgia, serif;
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
@@ -291,6 +291,11 @@
     0%   { background-position: 0% 50%; }
     50%  { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
   /* ── Stat Pill ─────────────────────────────────────── */

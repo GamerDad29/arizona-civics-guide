@@ -127,6 +127,40 @@ export const fetchSponsoredBills = (bioguideId: string) =>
 export const searchAll = (q: string) =>
   apiFetch<{ representatives: Representative[]; bills: Bill[]; issues: Issue[] }>(`/api/search?q=${encodeURIComponent(q)}`);
 
+// ── Location / Personalization ───────────────────────────
+
+export interface CivicOfficial {
+  name: string;
+  party: string | null;
+  phones: string[];
+  urls: string[];
+  photoUrl: string | null;
+  emails: string[];
+  channels: { type: string; id: string }[];
+  office: { name: string; divisionId: string; levels: string[]; roles: string[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  d1Match: Representative | Record<string, any> | null;
+}
+
+export interface LocationProfile {
+  address: string;
+  city: string;
+  county: string;
+  state: string;
+  zip: string;
+  legislativeDistrict: number | null;
+  congressionalDistrict: number | null;
+  officials: CivicOfficial[];
+  lat: number | null;
+  lng: number | null;
+}
+
+export const fetchLocation = (address: string) =>
+  apiFetch<LocationProfile>(`/api/locate?address=${encodeURIComponent(address)}`);
+
+export const fetchLocationByCoords = (lat: number, lng: number) =>
+  apiFetch<LocationProfile>(`/api/locate?lat=${lat}&lng=${lng}`);
+
 // ── OpenStates (state legislators, state bills) ─────────
 
 export const fetchStateLegislatorsByLocation = (lat: number, lng: number) =>

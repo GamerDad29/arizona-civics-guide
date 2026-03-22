@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, MapPin } from 'lucide-react';
+import { useUserLocation } from '../context/UserLocationContext';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 export function Navbar() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
+  const { location: userLoc, isPersonalized, clearLocation } = useUserLocation();
 
   return (
     <header
@@ -58,6 +60,26 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          {/* Location indicator */}
+          {isPersonalized && (
+            <div className="ml-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,115,51,0.1)', border: '1px solid rgba(184,115,51,0.2)' }}>
+              <MapPin size={11} style={{ color: '#B87333' }} />
+              <span className="font-ui font-semibold text-2xs uppercase tracking-wider" style={{ color: '#D4956B' }}>
+                {userLoc.city}
+              </span>
+              <button
+                onClick={(e) => { e.preventDefault(); clearLocation(); }}
+                className="ml-0.5 transition-colors"
+                style={{ color: 'rgba(240,244,248,0.3)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#E25822')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(240,244,248,0.3)')}
+                aria-label="Clear location"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* Mobile hamburger */}
@@ -78,6 +100,21 @@ export function Navbar() {
             borderTop: '1px solid rgba(255,255,255,0.06)',
           }}
         >
+          {isPersonalized && (
+            <div className="flex items-center gap-1.5 px-3 py-2 mb-2 rounded-md" style={{ background: 'rgba(184,115,51,0.08)' }}>
+              <MapPin size={12} style={{ color: '#B87333' }} />
+              <span className="font-ui font-semibold text-xs uppercase tracking-wider" style={{ color: '#D4956B' }}>
+                {userLoc.city}, AZ
+              </span>
+              <button
+                onClick={() => { clearLocation(); setOpen(false); }}
+                className="ml-auto text-xs font-ui uppercase tracking-wider"
+                style={{ color: 'rgba(240,244,248,0.3)' }}
+              >
+                Change
+              </button>
+            </div>
+          )}
           {NAV_LINKS.map(link => {
             const active = link.href === '/' ? location === '/' : location.startsWith(link.href);
             return (

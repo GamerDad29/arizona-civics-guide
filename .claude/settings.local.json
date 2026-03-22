@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.pexels.com)",
+      "Bash(npm run:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(curl -s \"https://arizona-civics-api.gamerdad29.workers.dev/api/locate?address=123+W+Main+St,+Mesa,+AZ+85201\")",
+      "WebFetch(domain:groups.google.com)",
+      "WebFetch(domain:developers.google.com)",
+      "Bash(curl -s \"https://civicinfo.googleapis.com/civicinfo/v2/divisionsByAddress?address=123+W+Main+St+Mesa+AZ+85201\")",
+      "Bash(curl -s \"https://arizona-civics-api.gamerdad29.workers.dev/api/locate?address=123+W+Main+St+Mesa+AZ+85201\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s https://arizona-civics-api.gamerdad29.workers.dev/api/locate?address=123+W+Main+St+Mesa+AZ+85201)",
+      "Bash(curl -s \"https://arizona-civics-guide-web.pages.dev\")",
+      "Bash(curl -s \"https://arizona-civics-api.gamerdad29.workers.dev/api/locate?address=200+W+Washington+St+Phoenix+AZ+85003\")",
+      "Bash(curl -s \"https://arizona-civics-api.gamerdad29.workers.dev/api/locate?address=100+N+Stone+Ave+Tucson+AZ+85701\")",
+      "Bash(curl -s \"https://6794e417.arizona-civics-guide-web.pages.dev\")",
+      "mcp__github-mcp__create_pull_request",
+      "Bash(curl -s \"https://arizona-civics-api.gamerdad29.workers.dev/api/fec?endpoint=candidates&name=Grijalva&state=AZ\")",
+      "Bash(node -e \"process.stdin.on\\(''''data'''',d=>{const r=JSON.parse\\(d\\).results;r.forEach\\(c=>console.log\\(c.candidate_id+''''|''''+c.name+''''|''''+c.election_years\\)\\)}\\)\")",
+      "Bash(for pair:*)",
+      "Bash(do id=\"$pair%%|*\" fec=\"$pair##*|\" npx wrangler d1 execute arizona-civics --remote --command=\"UPDATE representatives SET fec_candidate_id = ''''$fec'''' WHERE id = ''''$id''''\")"
+    ]
+  }
+}

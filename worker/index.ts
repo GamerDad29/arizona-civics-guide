@@ -82,12 +82,29 @@ async function getBills(env: Env, url: URL, corsH: Record<string, string>): Prom
   return json(results.map(r => parseJsonFields(r, ['tags'])), 200, corsH);
 }
 
-async function getBudget(env: Env, corsH: Record<string, string>): Promise<Response> {
+async function getBudget(env: Env, url: URL, corsH: Record<string, string>): Promise<Response> {
+  const city = url.searchParams.get('city')?.toLowerCase() || 'mesa';
+
+  // Check if budget_segments has a city column (graceful)
   const { results } = await env.DB.prepare('SELECT * FROM budget_segments ORDER BY percent DESC').all();
+
+  // For now, only Mesa has budget data
+  if (city !== 'mesa') {
+    return json({
+      fiscalYear: null,
+      total: null,
+      segments: [],
+      cityName: city,
+      available: false,
+    }, 200, corsH);
+  }
+
   return json({
     fiscalYear: '2025-26',
     total: '$2.1 Billion',
     segments: results,
+    cityName: 'Mesa',
+    available: true,
   }, 200, corsH);
 }
 
@@ -155,10 +172,50 @@ async function getCongressMembers(env: Env, url: URL, corsH: Record<string, stri
     return json({ error: 'Congress API key not configured' }, 503, corsH);
   }
 
+  const action = url.searchParams.get('action');
   const bioguideId = url.searchParams.get('bioguideId');
 
+  // Member votes (roll call voting record)
+  if (action === 'votes' && bioguideId) {
+    const limit = url.searchParams.get('limit') || '20';
+    const offset = url.searchParams.get('offset') || '0';
+    const congressUrl = `https://api.congress.gov/v3/member/${bioguideId}/votes?api_key=${env.CONGRESS_API_KEY}&limit=${limit}&offset=${offset}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Bill search
+  if (action === 'bills') {
+    const q = url.searchParams.get('q') || '';
+    const congress = url.searchParams.get('congress') || '119';
+    const limit = url.searchParams.get('limit') || '20';
+    const offset = url.searchParams.get('offset') || '0';
+    const sort = url.searchParams.get('sort') || 'updateDate+desc';
+    let congressUrl = `https://api.congress.gov/v3/bill/${congress}?api_key=${env.CONGRESS_API_KEY}&limit=${limit}&offset=${offset}&sort=${sort}`;
+    if (q) congressUrl += `&q=${encodeURIComponent(q)}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Single bill detail
+  if (action === 'bill') {
+    const congress = url.searchParams.get('congress') || '119';
+    const type = url.searchParams.get('type') || 'hr';
+    const number = url.searchParams.get('number');
+    if (!number) return json({ error: 'number required for bill detail' }, 400, corsH);
+    const congressUrl = `https://api.congress.gov/v3/bill/${congress}/${type}/${number}?api_key=${env.CONGRESS_API_KEY}`;
+    const resp = await fetch(congressUrl);
+    if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
+    const data = await resp.json();
+    return json(data, 200, corsH);
+  }
+
+  // Sponsored legislation for a specific member (existing behavior)
   if (bioguideId) {
-    // Get sponsored legislation for a specific member
     const congressUrl = `https://api.congress.gov/v3/member/${bioguideId}/sponsored-legislation?api_key=${env.CONGRESS_API_KEY}&limit=10&sort=updateDate+desc`;
     const resp = await fetch(congressUrl);
     if (!resp.ok) return json({ error: 'Congress API error' }, resp.status, corsH);
@@ -563,7 +620,7 @@ export default {
       if (path === '/api/representatives') return await getRepresentatives(env, url, corsH);
       if (path === '/api/elections')       return await getElections(env, corsH);
       if (path === '/api/bills')           return await getBills(env, url, corsH);
-      if (path === '/api/budget')          return await getBudget(env, corsH);
+      if (path === '/api/budget')          return await getBudget(env, url, corsH);
       if (path === '/api/issues')          return await getIssues(env, url, corsH);
       if (path === '/api/civic')           return await getCivicByAddress(env, url, corsH);
       if (path === '/api/congress')        return await getCongressMembers(env, url, corsH);

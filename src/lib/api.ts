@@ -33,6 +33,7 @@ export interface Representative {
   fec_url: string | null;
   ballotpedia_url: string | null;
   bioguide_id: string | null;
+  fec_candidate_id: string | null;
 }
 
 export interface ElectionDeadline {
@@ -160,6 +161,45 @@ export const fetchLocation = (address: string) =>
 
 export const fetchLocationByCoords = (lat: number, lng: number) =>
   apiFetch<LocationProfile>(`/api/locate?lat=${lat}&lng=${lng}`);
+
+// ── Congress.gov: votes + bill search ────────────────────
+
+export interface VoteRecord {
+  date: string;
+  rollNumber: number;
+  question: string;
+  result: string;
+  description: string;
+  memberPosition: string;
+  url: string;
+  congress: number;
+  chamber: string;
+}
+
+export interface CongressBill {
+  congress: number;
+  type: string;
+  number: number;
+  title: string;
+  latestAction?: { actionDate: string; text: string };
+  originChamber?: string;
+  url: string;
+  updateDate?: string;
+}
+
+export const fetchMemberVotes = (bioguideId: string, limit = 20, offset = 0) =>
+  apiFetch<{ votes: VoteRecord[] }>(`/api/congress?action=votes&bioguideId=${bioguideId}&limit=${limit}&offset=${offset}`);
+
+export const fetchCongressBills = (q?: string, congress = '119', limit = 20, offset = 0) => {
+  const params = new URLSearchParams({ action: 'bills', congress, limit: String(limit), offset: String(offset) });
+  if (q) params.set('q', q);
+  return apiFetch<{ bills: CongressBill[]; pagination: { count: number } }>(`/api/congress?${params}`);
+};
+
+// ── FEC: campaign finance (spending fetcher) ────────────
+
+export const fetchFECSpending = (candidateId: string, cycle?: string) =>
+  apiFetch<unknown>(`/api/fec?endpoint=spending&candidate_id=${candidateId}${cycle ? `&cycle=${cycle}` : ''}`);
 
 // ── OpenStates (state legislators, state bills) ─────────
 

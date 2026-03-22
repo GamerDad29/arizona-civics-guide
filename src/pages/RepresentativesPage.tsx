@@ -5,6 +5,7 @@ import { ChevronRight, Users } from 'lucide-react';
 import { fetchRepresentatives } from '../lib/api';
 import type { Representative } from '../lib/api';
 import { useApi } from '../hooks/useApi';
+import { useUserLocation } from '../context/UserLocationContext';
 
 const ZONES = ['local', 'state', 'federal'] as const;
 type Zone = (typeof ZONES)[number];
@@ -62,6 +63,8 @@ export function RepresentativesPage() {
     () => fetchRepresentatives(),
     []
   );
+  const { location: userLoc, isPersonalized } = useUserLocation();
+  const cityName = isPersonalized ? userLoc.city || '' : '';
 
   const filtered = reps?.filter(r => r.level === activeZone) ?? [];
 
@@ -135,9 +138,18 @@ export function RepresentativesPage() {
           style={{ gridAutoRows: '1fr' }}
         >
           {filtered.length === 0 && (
-            <p className="text-sm col-span-full text-center py-12 font-body" style={{ color: 'rgba(240,244,248,0.5)' }}>
-              No {ZONE_COLORS[activeZone].label.toLowerCase()} representatives found.
-            </p>
+            <div className="col-span-full text-center py-12">
+              <p className="text-sm font-body mb-2" style={{ color: 'rgba(240,244,248,0.5)' }}>
+                {isPersonalized && activeZone === 'local' && cityName
+                  ? `We don't have detailed profiles for ${cityName} city officials yet. We're adding more cities soon.`
+                  : `No ${ZONE_COLORS[activeZone].label.toLowerCase()} representatives found.`}
+              </p>
+              {isPersonalized && activeZone === 'local' && cityName && (
+                <p className="text-xs" style={{ color: 'rgba(240,244,248,0.3)' }}>
+                  Your state and federal representatives are available in the other tabs.
+                </p>
+              )}
+            </div>
           )}
 
           {filtered.map((rep, i) => (
